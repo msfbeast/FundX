@@ -10,10 +10,19 @@ interface LiveVoiceInterfaceProps {
   context: StartupContext;
 }
 
+interface TranscriptEntry {
+  speaker: 'user' | 'ai';
+  text: string;
+  timestamp: Date;
+}
+
 export const LiveVoiceInterface: React.FC<LiveVoiceInterfaceProps> = ({ context }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false); // AI is speaking
   const [error, setError] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const [showTranscript, setShowTranscript] = useState(true);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
   
   // Audio Context Refs
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -96,6 +105,16 @@ export const LiveVoiceInterface: React.FC<LiveVoiceInterfaceProps> = ({ context 
           },
           onmessage: async (message: LiveServerMessage) => {
             if (!mountedRef.current) return;
+
+            // Capture AI text response for transcript
+            const textResponse = message.serverContent?.modelTurn?.parts?.find(p => p.text)?.text;
+            if (textResponse && mountedRef.current) {
+              setTranscript(prev => [...prev, {
+                speaker: 'ai',
+                text: textResponse,
+                timestamp: new Date()
+              }]);
+            }
 
             // Handle Audio Output
             const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
@@ -201,6 +220,11 @@ export const LiveVoiceInterface: React.FC<LiveVoiceInterfaceProps> = ({ context 
     }
   };
 
+  // Auto-scroll transcript
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [transcript]);
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -210,7 +234,59 @@ export const LiveVoiceInterface: React.FC<LiveVoiceInterfaceProps> = ({ context 
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center h-full bg-slate-900 text-white rounded-xl overflow-hidden relative">
+    <div className="flex h-full bg-slate-900 text-white rounded-xl overflow-hidden relative gap-4 p-4">
+      
+      {/* Transcript Panel */}
+      {showTranscript && (
+        <div className="w-96 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 flex flex-col">
+          <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Live Transcript
+            </h3>
+            <button
+              onClick={() => setShowTranscript(false)}
+              className="text-slate-400 hover:text-white text-xs"
+            >
+              Hide
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+            {transcript.length === 0 ? (
+              <p className="text-slate-500 text-sm text-center mt-8">
+                Transcript will appear here during the call...
+              </p>
+            ) : (
+              transcript.map((entry, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3 rounded-lg ${
+                    entry.speaker === 'ai'
+                      ? 'bg-purple-900/30 border border-purple-700/30'
+                      : 'bg-blue-900/30 border border-blue-700/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs font-bold ${
+                      entry.speaker === 'ai' ? 'text-purple-400' : 'text-blue-400'
+                    }`}>
+                      {entry.speaker === 'ai' ? 'VC Investor' : 'You'}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {entry.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-200">{entry.text}</p>
+                </div>
+              ))
+            )}
+            <div ref={transcriptEndRef} />
+          </div>
+        </div>
+      )}
+
+      {/* Main Voice Interface */}
+      <div className="flex-1 flex flex-col items-center justify-center rounded-xl overflow-hidden relative">
       
       {/* Visualizer Background Effect */}
       <div className={`absolute inset-0 transition-opacity duration-1000 ${isConnected ? 'opacity-20' : 'opacity-0'}`}>
@@ -262,6 +338,17 @@ export const LiveVoiceInterface: React.FC<LiveVoiceInterfaceProps> = ({ context 
             <p>Model: Gemini 2.5 Flash Native Audio</p>
             <p>Latency: Real-time</p>
         </div>
+
+        {!showTranscript && (
+          <button
+            onClick={() => setShowTranscript(true)}
+            className="mt-4 text-sm text-slate-400 hover:text-white flex items-center gap-2 mx-auto"
+          >
+            <Activity className="w-4 h-4" />
+            Show Transcript
+          </button>
+        )}
+      </div>
       </div>
     </div>
   );
