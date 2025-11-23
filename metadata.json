@@ -1,0 +1,7 @@
+{
+  "name": "Funding Masterclass Coach",
+  "description": "An AI-powered interactive coach for startup fundraising based on the Complete Funding Masterclass, tailored for a Micro-OTT startup context.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
