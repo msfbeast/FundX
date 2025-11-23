@@ -32,7 +32,7 @@ import {
     DEFAULT_CONTEXT
 } from './constants';
 import { AppMode, Message, StartupContext, QuizQuestion, Flashcard, RoadmapMonth, SlideDeck, VCInsights } from './types';
-import { sendChatMessage, generateQuiz, generateFlashcards, generateRoadmap, generateSlideDeck, generateVCInsights } from './services/geminiService';
+import { sendChatMessage, generateQuiz, generateFlashcards, generateRoadmap, generateSlideDeck, generateVCInsights } from './services/geminiServiceSecure';
 import { VC_DATABASE } from './data/vcDatabase';
 import { authService, vcService } from './services/supabaseClient';
 import { ChatInterface } from './components/ChatInterface';
