@@ -5,6 +5,8 @@ import { getDetailedVCInfo } from '../services/vcDetailService';
 import { generatePersonalizedEmail } from '../services/emailGenerator';
 import { vcService } from '../services/supabaseClient';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { addVCToPipeline } from '../services/vcPipeline';
+import { useToast } from './Toast';
 
 interface VCFinderViewProps {
     insights: VCInsights | null;

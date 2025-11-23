@@ -18,7 +18,9 @@ import {
     Search,
     Building2,
     LogOut,
-    User
+    User,
+    TrendingUp,
+    Kanban
 } from 'lucide-react';
 import {
     MODULES,
@@ -42,6 +44,20 @@ import { LiveVoiceInterface } from './components/LiveVoiceInterface';
 import { GlossaryView } from './components/GlossaryView';
 import { VCFinderView } from './components/VCFinderView';
 import { AuthModal } from './components/AuthModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/Toast';
+import { ProgressDashboard } from './components/ProgressDashboard';
+import { initializeProgress } from './services/progressTracking';
+import { VCPipelineView } from './components/VCPipelineView';
+import { initializePipeline } from './services/vcPipeline';
+import { 
+    SlideSkeletonLoader, 
+    QuizSkeletonLoader, 
+    VCFinderSkeletonLoader, 
+    ChatSkeletonLoader, 
+    RoadmapSkeletonLoader,
+    FlashcardSkeletonLoader 
+} from './components/SkeletonLoaders';
 
 const App: React.FC = () => {
     const [mode, setMode] = useState<AppMode>(AppMode.TEACH);
@@ -66,6 +82,12 @@ const App: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
+
+    // Initialize progress tracking and pipeline
+    useEffect(() => {
+        initializeProgress();
+        initializePipeline();
+    }, []);
 
     // Auth state listener
     useEffect(() => {
@@ -311,6 +333,14 @@ const App: React.FC = () => {
                         activeClass="bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
                     />
                     <NavButton
+                        active={mode === AppMode.PROGRESS}
+                        onClick={() => handleModeChange(AppMode.PROGRESS)}
+                        icon={<TrendingUp className="w-5 h-5" />}
+                        label="Progress"
+                        colorClass="bg-purple-50 text-purple-600"
+                        activeClass="bg-purple-50 text-purple-700 ring-1 ring-purple-200"
+                    />
+                    <NavButton
                         active={mode === AppMode.GLOSSARY}
                         onClick={() => handleModeChange(AppMode.GLOSSARY)}
                         icon={<BookA className="w-5 h-5" />}
@@ -328,6 +358,14 @@ const App: React.FC = () => {
                         label="VC Finder"
                         colorClass="bg-yellow-50 text-yellow-600"
                         activeClass="bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200"
+                    />
+                    <NavButton
+                        active={mode === AppMode.VC_PIPELINE}
+                        onClick={() => handleModeChange(AppMode.VC_PIPELINE)}
+                        icon={<Kanban className="w-5 h-5" />}
+                        label="VC Pipeline"
+                        colorClass="bg-cyan-50 text-cyan-600"
+                        activeClass="bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200"
                     />
                     <NavButton
                         active={mode === AppMode.QUIZ}
@@ -515,23 +553,27 @@ const App: React.FC = () => {
 
                         {/* View Containers */}
                         {mode === AppMode.TEACH && (
-                            <TeachView
-                                deck={currentSlideDeck}
-                                isLoading={isLoading}
-                                onRefresh={handleGenerateSlides}
-                                context={context}
-                            />
+                            isLoading && !currentSlideDeck ? (
+                                <SlideSkeletonLoader />
+                            ) : (
+                                <TeachView
+                                    deck={currentSlideDeck}
+                                    isLoading={isLoading}
+                                    onRefresh={handleGenerateSlides}
+                                    context={context}
+                                />
+                            )
                         )}
 
                         {mode === AppMode.QUIZ && (
                             <div className="h-full max-w-3xl mx-auto p-2 overflow-y-auto">
-                                {isLoading ? <LoadingState /> : <QuizView questions={quizQuestions} onRetry={() => handleGenerateNewContent()} />}
+                                {isLoading ? <QuizSkeletonLoader /> : <QuizView questions={quizQuestions} onRetry={() => handleGenerateNewContent()} moduleId={`module_${selectedModule.split(':')[0].trim()}`} moduleName={selectedModule} />}
                             </div>
                         )}
 
                         {mode === AppMode.FLASHCARDS && (
                             <div className="h-full max-w-3xl mx-auto p-2 overflow-y-auto">
-                                {isLoading ? <LoadingState /> : <FlashcardView cards={flashcards} onGenerateNew={() => handleGenerateNewContent()} />}
+                                {isLoading ? <FlashcardSkeletonLoader /> : <FlashcardView cards={flashcards} onGenerateNew={() => handleGenerateNewContent()} />}
                             </div>
                         )}
 
@@ -542,6 +584,12 @@ const App: React.FC = () => {
                                     onGenerate={handleGenerateRoadmap}
                                     isLoading={isLoading}
                                 />
+                            </div>
+                        )}
+
+                        {mode === AppMode.PROGRESS && (
+                            <div className="h-full overflow-hidden">
+                                <ProgressDashboard />
                             </div>
                         )}
 
@@ -560,6 +608,12 @@ const App: React.FC = () => {
                                     context={context}
                                     user={user}
                                 />
+                            </div>
+                        )}
+
+                        {mode === AppMode.VC_PIPELINE && (
+                            <div className="h-full overflow-hidden">
+                                <VCPipelineView />
                             </div>
                         )}
 
@@ -626,4 +680,13 @@ const LoadingState = () => (
     </div>
 );
 
-export default App;
+// Wrap App with providers
+const AppWithProviders = () => (
+    <ErrorBoundary>
+        <ToastProvider>
+            <App />
+        </ToastProvider>
+    </ErrorBoundary>
+);
+
+export default AppWithProviders;

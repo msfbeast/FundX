@@ -7,7 +7,9 @@ export enum AppMode {
   MOCK_INTERVIEW = 'MOCK_INTERVIEW',
   PLAN = '90_DAY_PLAN',
   GLOSSARY = 'GLOSSARY',
-  VC_FINDER = 'VC_FINDER'
+  VC_FINDER = 'VC_FINDER',
+  PROGRESS = 'PROGRESS',
+  VC_PIPELINE = 'VC_PIPELINE'
 }
 
 export interface Message {

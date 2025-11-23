@@ -70,9 +70,13 @@ export const vcService = {
 
     // Get all saved VCs for the current user
     async getSavedVCs() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
             .from('saved_vcs')
             .select('*')
+            .eq('user_id', user.id) // Explicit user filter for security
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -81,10 +85,14 @@ export const vcService = {
 
     // Update VC status
     async updateVCStatus(vcId: string, status: SavedVC['status']) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
             .from('saved_vcs')
             .update({ status })
             .eq('id', vcId)
+            .eq('user_id', user.id) // Ensure user owns this VC
             .select()
             .single();
 
@@ -94,10 +102,14 @@ export const vcService = {
 
     // Add notes to a VC
     async updateVCNotes(vcId: string, notes: string) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
             .from('saved_vcs')
             .update({ notes })
             .eq('id', vcId)
+            .eq('user_id', user.id) // Ensure user owns this VC
             .select()
             .single();
 
@@ -107,10 +119,14 @@ export const vcService = {
 
     // Delete a VC
     async deleteVC(vcId: string) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { error } = await supabase
             .from('saved_vcs')
             .delete()
-            .eq('id', vcId);
+            .eq('id', vcId)
+            .eq('user_id', user.id); // Ensure user owns this VC
 
         if (error) throw error;
     },
@@ -136,10 +152,14 @@ export const vcService = {
 
     // Get emails for a VC
     async getVCEmails(vcId: string) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
             .from('generated_emails')
             .select('*')
             .eq('vc_id', vcId)
+            .eq('user_id', user.id) // Ensure user owns these emails
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -151,13 +171,52 @@ export const vcService = {
 export const authService = {
     // Sign up with email and password
     async signUp(email: string, password: string) {
+        // Validate password strength
+        const passwordValidation = this.validatePassword(password);
+        if (!passwordValidation.isValid) {
+            throw new Error(`Weak password: ${passwordValidation.errors.join(', ')}`);
+        }
+
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
+            options: {
+                emailRedirectTo: window.location.origin,
+            }
         });
 
         if (error) throw error;
         return data;
+    },
+
+    // Validate password strength
+    validatePassword(password: string): { isValid: boolean; errors: string[] } {
+        const errors: string[] = [];
+        
+        if (password.length < 12) {
+            errors.push('Password must be at least 12 characters');
+        }
+        
+        if (!/[A-Z]/.test(password)) {
+            errors.push('Must contain uppercase letter');
+        }
+        
+        if (!/[a-z]/.test(password)) {
+            errors.push('Must contain lowercase letter');
+        }
+        
+        if (!/\d/.test(password)) {
+            errors.push('Must contain number');
+        }
+        
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+            errors.push('Must contain special character');
+        }
+        
+        return {
+            isValid: errors.length === 0,
+            errors
+        };
     },
 
     // Sign in with email and password

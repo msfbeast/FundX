@@ -1,19 +1,33 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QuizQuestion } from '../types';
 import { CheckCircle, XCircle, ChevronRight, RefreshCw, Trophy, AlertCircle } from 'lucide-react';
+import { recordQuizScore } from '../services/progressTracking';
+import { useToast } from './Toast';
 
 interface QuizViewProps {
   questions: QuizQuestion[];
   onRetry: () => void;
+  moduleId: string;
+  moduleName: string;
 }
 
-export const QuizView: React.FC<QuizViewProps> = ({ questions, onRetry }) => {
+export const QuizView: React.FC<QuizViewProps> = ({ questions, onRetry, moduleId, moduleName }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [score, setScore] = useState(0);
   const [quizComplete, setQuizComplete] = useState(false);
+  const { success } = useToast();
+
+  // Record quiz score when complete
+  useEffect(() => {
+    if (quizComplete && questions.length > 0) {
+      const percentage = Math.round((score / questions.length) * 100);
+      recordQuizScore(moduleId, moduleName, score, questions.length);
+      success(`🎉 Quiz complete! You scored ${percentage}%`);
+    }
+  }, [quizComplete, score, questions.length, moduleId, moduleName]);
 
   const currentQuestion = questions[currentIndex];
 

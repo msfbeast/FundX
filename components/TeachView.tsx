@@ -8,6 +8,10 @@ import {
 } from 'lucide-react';
 import { generatePodcastScript, generatePodcastAudio } from '../services/geminiService';
 import { decodeAudioData } from '../utils/audio';
+import { ProgressIndicator } from './ProgressIndicator';
+import { useToast } from './Toast';
+import { loadPodcastFromCache, savePodcastToCache, isPodcastCached } from '../utils/podcastCache';
+import { addTimeSpent, completeModule } from '../services/progressTracking';
 
 interface TeachViewProps {
     deck: SlideDeck | null;
@@ -311,6 +315,8 @@ const PodcastPlayer = ({
     const hasAudio = podcastState.status === PodcastStatus.READY || podcastState.status === PodcastStatus.PLAYING;
 
     if (!hasAudio && !isGenerating && podcastState.status !== PodcastStatus.ERROR) {
+        const isCached = isPodcastCached(moduleTitle);
+        
         return (
             <div className="flex items-center justify-between p-6 bg-white rounded-3xl shadow-sm border border-slate-100">
                 <div className="flex items-center gap-4">
@@ -318,31 +324,50 @@ const PodcastPlayer = ({
                         <Headphones className="w-6 h-6" />
                     </div>
                     <div>
-                        <div className="text-base font-bold text-slate-900">Deep Dive Podcast</div>
-                        <div className="text-sm text-slate-500">AI-generated discussion about this module.</div>
+                        <div className="text-base font-bold text-slate-900 flex items-center gap-2">
+                            Deep Dive Podcast
+                            {isCached && (
+                                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase rounded-md border border-emerald-200">
+                                    Cached
+                                </span>
+                            )}
+                        </div>
+                        <div className="text-sm text-slate-500">
+                            {isCached ? 'Loads instantly from cache' : 'AI-generated discussion about this module'}
+                        </div>
                     </div>
                 </div>
                 <button
                     onClick={handleGenerate}
                     className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl hover:bg-black transition-all text-xs font-bold uppercase tracking-wide shadow-lg hover:shadow-xl active:scale-95"
                 >
-                    <Play className="w-3 h-3 fill-current" /> Generate
+                    <Play className="w-3 h-3 fill-current" /> {isCached ? 'Load' : 'Generate'}
                 </button>
             </div>
         );
     }
 
     if (isGenerating) {
+        const currentStep = podcastState.status === PodcastStatus.GENERATING_SCRIPT ? 0 : 1;
+        
         return (
-            <div className={`flex flex-col items-center justify-center p-12 bg-white rounded-3xl border border-slate-100 gap-6 ${className}`}>
-                <div className="relative">
-                    <div className="absolute inset-0 bg-indigo-100 rounded-full animate-ping opacity-75"></div>
-                    <div className="relative bg-white p-3 rounded-full shadow-md">
-                        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-                    </div>
+            <div className={`flex flex-col items-center justify-center p-12 bg-white rounded-3xl border border-slate-100 gap-8 ${className}`}>
+                <div className="text-center mb-4">
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">Creating Your Podcast</h3>
+                    <p className="text-sm text-slate-500">This takes 2-3 minutes. Grab a coffee! ☕</p>
                 </div>
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">
-                    {podcastState.status === PodcastStatus.GENERATING_SCRIPT ? 'Writing Script...' : 'Recording Audio...'}
+                
+                <ProgressIndicator
+                    steps={[
+                        'Writing 8-10 minute script',
+                        'Generating multi-speaker audio'
+                    ]}
+                    currentStep={currentStep}
+                />
+                
+                <div className="text-xs text-slate-400 text-center max-w-md">
+                    <p className="mb-2">💡 <strong>Pro tip:</strong> The podcast includes real-world examples and applies concepts to your startup.</p>
+                    <p>You can download it when ready!</p>
                 </div>
             </div>
         );
@@ -485,6 +510,31 @@ const PodcastPlayer = ({
 export const TeachView: React.FC<TeachViewProps> = ({ deck, isLoading, onRefresh, context }) => {
     const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
     const [podcastState, setPodcastState] = useState<PodcastState>({ status: PodcastStatus.IDLE });
+    const { success, error: showError } = useToast();
+    const [startTime] = useState(Date.now());
+
+    // Track time spent on module
+    useEffect(() => {
+        if (!deck) return;
+        
+        const interval = setInterval(() => {
+            const moduleId = `module_${deck.moduleTitle.split(':')[0].trim()}`;
+            addTimeSpent(moduleId, deck.moduleTitle, 10); // Track every 10 seconds
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, [deck]);
+
+    // Mark module as complete when user reaches last slide
+    useEffect(() => {
+        if (!deck || !deck.slides) return;
+        
+        if (currentSlideIdx === deck.slides.length - 1) {
+            const moduleId = `module_${deck.moduleTitle.split(':')[0].trim()}`;
+            completeModule(moduleId, deck.moduleTitle);
+            success(`🎉 Module "${deck.moduleTitle}" completed!`);
+        }
+    }, [currentSlideIdx, deck]);
 
     useEffect(() => {
         setPodcastState({ status: PodcastStatus.IDLE });
@@ -496,21 +546,49 @@ export const TeachView: React.FC<TeachViewProps> = ({ deck, isLoading, onRefresh
 
     const handleGeneratePodcast = async () => {
         if (!deck) return;
+        
         try {
+            // Check cache first
+            const cached = await loadPodcastFromCache(deck.moduleTitle);
+            if (cached) {
+                setPodcastState({ 
+                    status: PodcastStatus.READY, 
+                    script: cached.script, 
+                    audioBuffer: cached.audioBuffer 
+                });
+                success("🎧 Podcast loaded from cache!");
+                return;
+            }
+
+            // Generate new podcast
             setPodcastState({ status: PodcastStatus.GENERATING_SCRIPT });
             const script = await generatePodcastScript(deck.moduleTitle, context);
-            if (!script) { setPodcastState({ status: PodcastStatus.ERROR }); return; }
+            if (!script) { 
+                setPodcastState({ status: PodcastStatus.ERROR }); 
+                showError("Failed to generate podcast script");
+                return; 
+            }
 
             setPodcastState({ status: PodcastStatus.GENERATING_AUDIO, script });
             const audioData = await generatePodcastAudio(script);
-            if (!audioData) { setPodcastState({ status: PodcastStatus.ERROR }); return; }
+            if (!audioData) { 
+                setPodcastState({ status: PodcastStatus.ERROR }); 
+                showError("Failed to generate podcast audio");
+                return; 
+            }
 
             const tempCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
             const buffer = await decodeAudioData(audioData, tempCtx, 24000, 1);
             tempCtx.close();
+            
+            // Save to cache
+            await savePodcastToCache(deck.moduleTitle, script, buffer);
+            
             setPodcastState({ status: PodcastStatus.READY, script, audioBuffer: buffer });
+            success("🎧 Podcast ready! Press play to listen.");
         } catch (e) {
             setPodcastState({ status: PodcastStatus.ERROR });
+            showError("Something went wrong generating the podcast");
         }
     };
 
