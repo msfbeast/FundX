@@ -234,11 +234,11 @@ export const LiveVoiceInterface: React.FC<LiveVoiceInterfaceProps> = ({ context 
   }, []);
 
   return (
-    <div className="flex h-full bg-slate-900 text-white rounded-xl overflow-hidden relative gap-4 p-4">
+    <div className="flex flex-col md:flex-row h-full bg-slate-900 text-white rounded-xl overflow-hidden relative gap-4 p-2 md:p-4">
       
       {/* Transcript Panel */}
       {showTranscript && (
-        <div className="w-96 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 flex flex-col">
+        <div className="w-full md:w-96 h-48 md:h-auto bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 flex flex-col">
           <div className="p-4 border-b border-slate-700 flex items-center justify-between">
             <h3 className="font-bold text-sm flex items-center gap-2">
               <Activity className="w-4 h-4" />
