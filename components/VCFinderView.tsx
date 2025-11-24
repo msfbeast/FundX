@@ -267,7 +267,7 @@ export const VCFinderView: React.FC<VCFinderViewProps> = ({ insights, isLoading,
                         : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
                         }`}
                 >
-                    My Cached VCs ({cachedVCs.length})
+                    💾 My Saved VCs ({cachedVCs.length})
                 </button>
             </div>
 
@@ -309,16 +309,42 @@ export const VCFinderView: React.FC<VCFinderViewProps> = ({ insights, isLoading,
 
             {/* Investor Grid */}
             <div className="pb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredInvestors.map((inv, idx) => (
-                        <InvestorCard
-                            key={idx}
-                            profile={inv}
-                            onKnowMore={() => handleKnowMore(inv)}
-                            onGenerateEmail={() => handleGenerateEmail(inv)}
-                        />
-                    ))}
-                </div>
+                {filteredInvestors.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 px-4">
+                        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                            <Building2 className="w-10 h-10 text-slate-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">
+                            {activeTab === 'cached' ? 'No Saved VCs Yet' : 'No VCs Found'}
+                        </h3>
+                        <p className="text-slate-500 text-center max-w-md mb-6">
+                            {activeTab === 'cached' 
+                                ? 'Click "Know More" on any VC to automatically save them here. Your saved VCs will sync across devices when logged in.'
+                                : searchTerm || filterType
+                                ? 'Try adjusting your search or filters to find more investors.'
+                                : 'Click "Find Investors" to discover VCs that match your startup.'}
+                        </p>
+                        {activeTab === 'cached' && (
+                            <button
+                                onClick={() => setActiveTab('all')}
+                                className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl transition-colors"
+                            >
+                                Browse All VCs
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredInvestors.map((inv, idx) => (
+                            <InvestorCard
+                                key={idx}
+                                profile={inv}
+                                onKnowMore={() => handleKnowMore(inv)}
+                                onGenerateEmail={() => handleGenerateEmail(inv)}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Detailed VC Info Modal */}
