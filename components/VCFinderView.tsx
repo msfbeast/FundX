@@ -183,8 +183,8 @@ export const VCFinderView: React.FC<VCFinderViewProps> = ({ insights, isLoading,
     const filteredInvestors = useMemo(() => {
         const sourceList = activeTab === 'all' ? (insights?.investors || []) : cachedVCs;
         return sourceList.filter(inv => {
-            const matchesSearch = inv.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                inv.thesis.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = (inv.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (inv.thesis || '').toLowerCase().includes(searchTerm.toLowerCase());
             const matchesType = filterType ? inv.firmType === filterType : true;
             return matchesSearch && matchesType;
         });
