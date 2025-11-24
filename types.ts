@@ -129,13 +129,13 @@ export interface VCContact {
 export interface VCProfile {
   name: string;
   firmType: 'Micro-VC' | 'VC' | 'Angel Network' | 'Accelerator' | 'Family Office';
-  checkSize: string;
-  thesis: string;
-  notablePortfolio: string[];
-  matchReason: string;
-  email: string;
-  website: string;
-  linkedin: string;
+  checkSize?: string;
+  thesis?: string;
+  notablePortfolio?: string[];
+  matchReason?: string;
+  email?: string;
+  website?: string;
+  linkedin?: string;
   detailedInfo?: string; // Comprehensive information about the VC
   contacts?: VCContact[]; // Multiple partners
 }

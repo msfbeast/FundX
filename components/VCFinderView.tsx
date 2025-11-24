@@ -490,7 +490,7 @@ const InvestorCard: React.FC<{ profile: VCProfile; onKnowMore: () => void; onGen
                     <span><span className="font-bold text-slate-700">Thesis:</span> {profile.thesis}</span>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
-                    {profile.notablePortfolio.map((co, i) => (
+                    {(profile.notablePortfolio || []).map((co, i) => (
                         <span key={i} className="px-2 py-1 bg-slate-50 text-slate-500 text-[10px] font-bold uppercase rounded-md border border-slate-100">
                             {co}
                         </span>
@@ -503,7 +503,7 @@ const InvestorCard: React.FC<{ profile: VCProfile; onKnowMore: () => void; onGen
                 <div className="mb-4 pb-4 border-b border-slate-100">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Key Partners</div>
                     <div className="space-y-2">
-                        {profile.contacts.map((contact, idx) => (
+                        {(profile.contacts || []).map((contact, idx) => (
                             <div key={idx} className="flex items-center justify-between text-xs bg-slate-50 p-2 rounded-lg border border-slate-100">
                                 <div>
                                     <div className="font-bold text-slate-700">{contact.name}</div>
